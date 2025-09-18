@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Bloomberg Terminal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #001a00 0%, #003300 50%, #001a00 100%);
+            padding: 15px;
+            border-bottom: 2px solid #00ff41;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff41;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .datetime {
+            font-size: 14px;
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .markets-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .news-panel {
+            flex: 1;
+            background: #001a00;
+            border-left: 2px solid #00ff41;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -5px 0 20px rgba(0, 255, 65, 0.2);
+        }
+
+        .asset-section {
+            margin-bottom: 30px;
+            background: #001a00;
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        }
+
+        .section-title {
+            font-size: 18px;
+            color: #00ff41;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #00ff41;
+            text-shadow: 0 0 8px #00ff41;
+        }
+
+        .security-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(0, 51, 0, 0.3);
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .security-row:hover {
+            background: rgba(0, 255, 65, 0.1);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .ticker {
+            font-weight: bold;
+            color: #00ff41;
+            min-width: 100px;
+        }
+
+        .price {
+            color: #00ff41;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        .change {
+            min-width: 80px;
+            text-align: right;
+            font-weight: bold;
+        }
+
+        .positive {
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00;
+        }
+
+        .negative {
+            color: #ff0000;
+            text-shadow: 0 0 5px #ff0000;
+        }
+
+        .news-item {
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(0, 51, 0, 0.3);
+            border-left: 3px solid #00ff41;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .news-item:hover {
+            background: rgba(0, 255, 65, 0.1);
+            transform: translateX(5px);
+        }
+
+        .news-time {
+            font-size: 11px;
+            color: #00ff41;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .news-title {
+            font-size: 14px;
+            color: #00ff41;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .news-source {
+            font-size: 12px;
+            color: #00ff41;
+            opacity: 0.6;
+        }
+
+        .ticker-tape {
+            background: #001a00;
+            padding: 10px;
+            border-bottom: 1px solid #00ff41;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .ticker-content {
+            display: flex;
+            white-space: nowrap;
+            animation: scroll 30s linear infinite;
+        }
+
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        .ticker-item {
+            padding: 0 30px;
+            color: #00ff41;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #001a00;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00ff41;
+            border-radius: 4px;
+        }
+
+        .loading {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .market-status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            animation: statusPulse 2s infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
+            50% { box-shadow: 0 0 15px rgba(0, 255, 65, 0.8); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">📊 MINI BLOOMBERG TERMINAL</div>
+        <div class="market-status">MARKETS LIVE</div>
+        <div class="datetime" id="datetime"></div>
+    </div>
+
+    <div class="ticker-tape">
+        <div class="ticker-content" id="tickerContent">
+            <span class="ticker-item">BREAKING: Fed maintains interest rates</span>
+            <span class="ticker-item">S&P 500 hits new high</span>
+            <span class="ticker-item">Bitcoin surges past $95,000</span>
+            <span class="ticker-item">Gold reaches 6-month peak</span>
+            <span class="ticker-item">EUR/USD volatility increases</span>
+            <span class="ticker-item">Oil prices stabilize at $75</span>
+            <span class="ticker-item">Tech stocks lead rally</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="markets-panel">
+            <!-- Equities -->
+            <div class="asset-section">
+                <div class="section-title">📈 EQUITIES - TOP 10</div>
+                <div id="equities"></div>
+            </div>
+
+            <!-- Bonds -->
+            <div class="asset-section">
+                <div class="section-title">📋 BONDS - TOP 10</div>
+                <div id="bonds"></div>
+            </div>
+
+            <!-- Crypto -->
+            <div class="asset-section">
+                <div class="section-title">₿ CRYPTOCURRENCIES - TOP 10</div>
+                <div id="crypto"></div>
+            </div>
+
+            <!-- Forex -->
+            <div class="asset-section">
+                <div class="section-title">💱 FOREX PAIRS - TOP 10</div>
+                <div id="forex"></div>
+            </div>
+
+            <!-- Commodities -->
+            <div class="asset-section">
+                <div class="section-title">🛢️ COMMODITIES - TOP 10</div>
+                <div id="commodities"></div>
+            </div>
+        </div>
+
+        <div class="news-panel">
+            <div class="section-title">📰 LIVE FINANCIAL NEWS</div>
+            <div id="newsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Market Data
+        const marketData = {
+            equities: [
+                { ticker: 'AAPL', name: 'Apple Inc.', price: 225.43, change: 2.15 },
+                { ticker: 'MSFT', name: 'Microsoft', price: 428.67, change: -1.23 },
+                { ticker: 'GOOGL', name: 'Alphabet', price: 175.82, change: 0.89 },
+                { ticker: 'AMZN', name: 'Amazon', price: 189.34, change: 3.45 },
+                { ticker: 'NVDA', name: 'NVIDIA', price: 892.15, change: 15.67 },
+                { ticker: 'META', name: 'Meta', price: 512.38, change: -2.34 },
+                { ticker: 'TSLA', name: 'Tesla', price: 245.67, change: 8.92 },
+                { ticker: 'BRK-B', name: 'Berkshire', price: 432.18, change: 0.45 },
+                { ticker: 'JPM', name: 'JP Morgan', price: 198.45, change: 1.23 },
+                { ticker: 'V', name: 'Visa', price: 278.90, change: -0.67 }
+            ],
+            bonds: [
+                { ticker: 'US10Y', name: '10-Year Treasury', price: 4.285, change: 0.025 },
+                { ticker: 'US2Y', name: '2-Year Treasury', price: 4.125, change: -0.015 },
+                { ticker: 'US30Y', name: '30-Year Treasury', price: 4.485, change: 0.035 },
+                { ticker: 'DE10Y', name: 'German 10Y Bund', price: 2.315, change: 0.012 },
+                { ticker: 'UK10Y', name: 'UK 10Y Gilt', price: 4.125, change: -0.008 },
+                { ticker: 'JP10Y', name: 'Japan 10Y JGB', price: 0.725, change: 0.005 },
+                { ticker: 'IT10Y', name: 'Italy 10Y BTP', price: 3.685, change: -0.022 },
+                { ticker: 'FR10Y', name: 'France 10Y OAT', price: 2.985, change: 0.015 },
+                { ticker: 'CA10Y', name: 'Canada 10Y', price: 3.245, change: 0.018 },
+                { ticker: 'AU10Y', name: 'Australia 10Y', price: 4.385, change: -0.012 }
+            ],
+            crypto: [
+                { ticker: 'BTC', name: 'Bitcoin', price: 95234.56, change: 2.45 },
+                { ticker: 'ETH', name: 'Ethereum', price: 3567.89, change: -1.23 },
+                { ticker: 'BNB', name: 'Binance Coin', price: 645.23, change: 0.89 },
+                { ticker: 'SOL', name: 'Solana', price: 189.45, change: 5.67 },
+                { ticker: 'XRP', name: 'Ripple', price: 0.6234, change: -2.34 },
+                { ticker: 'ADA', name: 'Cardano', price: 0.5678, change: 1.45 },
+                { ticker: 'AVAX', name: 'Avalanche', price: 42.34, change: 3.21 },
+                { ticker: 'DOT', name: 'Polkadot', price: 7.89, change: -0.67 },
+                { ticker: 'MATIC', name: 'Polygon', price: 0.8956, change: 2.13 },
+                { ticker: 'LINK', name: 'Chainlink', price: 15.67, change: 1.89 }
+            ],
+            forex: [
+                { ticker: 'EUR/USD', name: 'Euro/US Dollar', price: 1.0856, change: 0.0023 },
+                { ticker: 'GBP/USD', name: 'Pound/US Dollar', price: 1.2734, change: -0.0015 },
+                { ticker: 'USD/JPY', name: 'US Dollar/Yen', price: 149.85, change: 0.35 },
+                { ticker: 'USD/CHF', name: 'US Dollar/Swiss', price: 0.8812, change: -0.0008 },
+                { ticker: 'AUD/USD', name: 'Aussie/US Dollar', price: 0.6523, change: 0.0012 },
+                { ticker: 'USD/CAD', name: 'US Dollar/CAD', price: 1.3645, change: -0.0025 },
+                { ticker: 'NZD/USD', name: 'Kiwi/US Dollar', price: 0.5987, change: 0.0008 },
+                { ticker: 'EUR/GBP', name: 'Euro/Pound', price: 0.8524, change: -0.0006 },
+                { ticker: 'EUR/JPY', name: 'Euro/Yen', price: 162.65, change: 0.45 },
+                { ticker: 'GBP/JPY', name: 'Pound/Yen', price: 190.78, change: -0.32 }
+            ],
+            commodities: [
+                { ticker: 'GC', name: 'Gold', price: 2045.30, change: 12.50 },
+                { ticker: 'SI', name: 'Silver', price: 23.45, change: -0.23 },
+                { ticker: 'CL', name: 'WTI Crude Oil', price: 75.23, change: 0.89 },
+                { ticker: 'BZ', name: 'Brent Crude', price: 79.45, change: 1.12 },
+                { ticker: 'NG', name: 'Natural Gas', price: 2.756, change: -0.045 },
+                { ticker: 'HG', name: 'Copper', price: 3.8945, change: 0.0234 },
+                { ticker: 'PL', name: 'Platinum', price: 945.60, change: 5.30 },
+                { ticker: 'PA', name: 'Palladium', price: 1023.45, change: -8.90 },
+                { ticker: 'W', name: 'Wheat', price: 585.25, change: 2.75 },
+                { ticker: 'C', name: 'Corn', price: 478.50, change: -1.25 }
+            ]
+        };
+
+        // News Data (Simulated)
+        const newsData = [
+            { time: '2 mins ago', title: 'Federal Reserve Maintains Interest Rates at 5.5%', source: 'Reuters' },
+            { time: '15 mins ago', title: 'Tech Stocks Rally on AI Optimism', source: 'Bloomberg' },
+            { time: '28 mins ago', title: 'Bitcoin Surges Above $95,000 on ETF Inflows', source: 'CNBC' },
+            { time: '45 mins ago', title: 'European Markets Close Mixed Amid Inflation Data', source: 'Financial Times' },
+            { time: '1 hour ago', title: 'Gold Prices Hit 6-Month High on Safe Haven Demand', source: 'MarketWatch' },
+            { time: '1 hour ago', title: 'Oil Stabilizes as OPEC+ Maintains Production Cuts', source: 'WSJ' },
+            { time: '2 hours ago', title: 'Dollar Strengthens Against Major Currencies', source: 'Forbes' },
+            { time: '3 hours ago', title: 'Asian Markets Close Higher on China Stimulus', source: 'Nikkei' }
+        ];
+
+        // Update DateTime
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            };
+            document.getElementById('datetime').textContent = now.toLocaleDateString('en-US', options);
+        }
+
+        // Render Market Data
+        function renderMarketData(containerId, data, decimalPlaces = 2) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            data.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'security-row';
+                
+                const changeClass = item.change >= 0 ? 'positive' : 'negative';
+                const changeSymbol = item.change >= 0 ? '▲' : '▼';
+                const changePercent = containerId === 'bonds' ? 
+                    item.change.toFixed(3) + ' bps' : 
+                    `${changeSymbol} ${Math.abs(item.change).toFixed(2)}%`;
+                
+                row.innerHTML = `
+                    <span class="ticker">${item.ticker}</span>
+                    <span class="price">$${item.price.toLocaleString('en-US', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</span>
+                    <span class="change ${changeClass}">${changePercent}</span>
+                `;
+                
+                container.appendChild(row);
+            });
+        }
+
+        // Render News
+        function renderNews() {
+            const newsContainer = document.getElementById('newsContent');
+            newsContainer.innerHTML = '';
+            
+            newsData.forEach(news => {
+                const newsItem = document.createElement('div');
+                newsItem.className = 'news-item';
+                newsItem.innerHTML = `
+                    <div class="news-time">${news.time}</div>
+                    <div class="news-title">${news.title}</div>
+                    <div class="news-source">${news.source}</div>
+                `;
+                newsContainer.appendChild(newsItem);
+            });
+        }
+
+        // Simulate Price Updates
+        function updatePrices() {
+            // Update equities
+            marketData.equities.forEach(stock => {
+                const randomChange = (Math.random() - 0.5) * 2;
+                stock.price = stock.price * (1 + randomChange / 100);
+                stock.change = randomChange;
+            });
+            
+            // Update crypto
+            marketData.crypto.forEach(crypto => {
+                const randomChange = (Math.random() - 0.5) * 5;
+                crypto.price = crypto.price * (1 + randomChange / 100);
+                crypto.change = randomChange;
+            });
+            
+            // Update forex
+            marketData.forex.forEach(pair => {
+                const randomChange = (Math.random() - 0.5) * 0.005;
+                pair.price = pair.price + randomChange;
+                pair.change = randomChange;
+            });
+            
+            // Update commodities
+            marketData.commodities.forEach(commodity => {
+                const randomChange = (Math.random() - 0.5) * 2;
+                commodity.price = commodity.price * (1 + randomChange / 100);
+                commodity.change = randomChange;
+            });
+            
+            // Update bonds
+            marketData.bonds.forEach(bond => {
+                const randomChange = (Math.random() - 0.5) * 0.05;
+                bond.price = bond.price + randomChange;
+                bond.change = randomChange * 100; // Convert to basis points
+            });
+            
+            // Re-render all markets
+            renderMarketData('equities', marketData.equities);
+            renderMarketData('bonds', marketData.bonds, 3);
+            renderMarketData('crypto', marketData.crypto);
+            renderMarketData('forex', marketData.forex, 4);
+            renderMarketData('commodities', marketData.commodities);
+        }
+
+        // Simulate News Updates
+        function updateNews() {
+            // Shift time labels
+            newsData.forEach(news => {
+                if (news.time.includes('mins')) {
+                    const mins = parseInt(news.time);
+                    news.time = `${mins + 1} mins ago`;
+                }
+            });
+            
+            // Occasionally add new news
+            if (Math.random() > 0.7) {
+                newsData.unshift({
+                    time: 'Just now',
+                    title: generateRandomHeadline(),
+                    source: ['Reuters', 'Bloomberg', 'CNBC', 'WSJ', 'FT'][Math.floor(Math.random() * 5)]
+                });
+                newsData.pop();
+            }
+            
+            renderNews();
+        }
+
+        // Generate Random Headlines
+        function generateRandomHeadline() {
+            const headlines = [
+                'Market Volatility Increases Amid Economic Data',
+                'Central Banks Signal Policy Changes',
+                'Tech Giants Report Strong Earnings',
+                'Energy Prices Surge on Supply Concerns',
+                'Currency Markets React to Geopolitical Events',
+                'Emerging Markets Show Strong Growth',
+                'Commodity Prices Rally on Demand Outlook',
+                'Bond Yields Rise on Inflation Expectations'
+            ];
+            return headlines[Math.floor(Math.random() * headlines.length)];
+        }
+
+        // Initialize
+        function init() {
+            updateDateTime();
+            renderMarketData('equities', marketData.equities);
+            renderMarketData('bonds', marketData.bonds, 3);
+            renderMarketData('crypto', marketData.crypto);
+            renderMarketData('forex', marketData.forex, 4);
+            renderMarketData('commodities', marketData.commodities);
+            renderNews();
+            
+            // Update intervals
+            setInterval(updateDateTime, 1000);
+            setInterval(updatePrices, 3000); // Update prices every 3 seconds
+            setInterval(updateNews, 30000); // Update news every 30 seconds
+        }
+
+        // Start the terminal
+        init();
+
+        // Add keyboard shortcut for fullscreen
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
